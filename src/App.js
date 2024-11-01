@@ -53,8 +53,8 @@ const average = (arr) =>
 const KEY = "e20b08a4";
 
 export default function App() {
-  const [movies, setMovies] = useState(tempMovieData);
-  const [watched, setWatched] = useState(tempWatchedData);
+  const [movies, setMovies] = useState([]);
+  const [watched, setWatched] = useState([]);
   const [query, setQuery] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
@@ -66,8 +66,11 @@ export default function App() {
   }
 
   function handleCloseMove() {
-    console.log("This line as excuted");
     setSelectedId(null);
+  }
+
+  function handleAddWatched(movie) {
+    setWatched((watched) => [...watched, movie]);
   }
 
   useEffect(
@@ -132,6 +135,8 @@ export default function App() {
             <MovieDetails
               selectedId={selectedId}
               onCloseMovie={handleCloseMove}
+              onAddWatched={handleAddWatched}
+              watched={watched}
             />
           ) : (
             <>
@@ -251,16 +256,21 @@ function Movie({ movie, onSelectedMovie }) {
   );
 }
 
-function MovieDetails({ selectedId, onCloseMovie }) {
+function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   const [movie, setMovie] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [userRating, setUserRating] = useState(0);
+
+  const isWatched = watched.map((movie) => movie.imdbID).includes(selectedId);
+  const watchedUserRating = watched.find(
+    (movie) => movie.imdbID === selectedId
+  )?.userRating;
 
   const {
     Title: title,
     Year: year,
     Poster: poster,
     Runtime: runtime,
-    imdbID,
     Plot: plot,
     Released: released,
     Actor: actors,
@@ -269,7 +279,20 @@ function MovieDetails({ selectedId, onCloseMovie }) {
     imdbRating,
   } = movie;
 
-  console.log(title, year);
+  function handleAdd() {
+    const newWatchedMovie = {
+      imdbID: selectedId,
+      title,
+      year,
+      poster,
+      imdbRating: Number(imdbRating),
+      runtime: Number(runtime.split(" ").at(0)),
+      userRating,
+    };
+
+    onAddWatched(newWatchedMovie);
+    onCloseMovie();
+  }
 
   useEffect(
     function () {
@@ -282,7 +305,6 @@ function MovieDetails({ selectedId, onCloseMovie }) {
 
         const data = await res.json();
         setMovie(data);
-        console.log(data);
         setIsLoading(false);
       }
       getMovieDetails();
@@ -316,7 +338,26 @@ function MovieDetails({ selectedId, onCloseMovie }) {
 
           <section>
             <div className="rating">
-              <StarRating size={24} maxRating={10} />
+              {!isWatched ? (
+                <>
+                  <StarRating
+                    size={24}
+                    maxRating={10}
+                    onSetRating={setUserRating}
+                  />
+
+                  {userRating > 0 && (
+                    <button className="btn-add" onClick={handleAdd}>
+                      + Add to list
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p>
+                  You rated this movie {watchedUserRating}
+                  <span>⭐</span>
+                </p>
+              )}
             </div>
             <p>
               <em>{plot}</em>
@@ -373,8 +414,8 @@ function WatchedMoviesList({ watched }) {
 function WatchedMovie({ movie }) {
   return (
     <li>
-      <img src={movie.Poster} alt={`${movie.Title} poster`} />
-      <h3>{movie.Title}</h3>
+      <img src={movie.poster} alt={`${movie.title} poster`} />
+      <h3>{movie.title}</h3>
       <div>
         <p>
           <span>⭐️</span>
